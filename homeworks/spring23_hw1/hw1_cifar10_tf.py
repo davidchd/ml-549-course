@@ -18,6 +18,7 @@ from wandb.keras import WandbMetricsLogger
 import tensorflow as tf
 from tensorflow import keras
 from keras import layers
+from keras import regularizers
 import tensorflow_datasets as tfds
 from matplotlib import pyplot as plt
 
@@ -30,8 +31,8 @@ if __name__ == '__main__':
     wandb.init(
         project="hw1_spring2023",  # Leave this as 'hw1_spring2023'
         entity="bu-spark-ml",  # Leave this
-        group="<your_BU_username>",  # <<<<<<< Put your BU username here
-        notes="Minimal model"  # <<<<<<< You can put a short note here
+        group="hjc5283",  # <<<<<<< Put your BU username here
+        notes="test-1-4"  # <<<<<<< You can put a short note here
     )
 
     """
@@ -68,26 +69,37 @@ if __name__ == '__main__':
     ds_cifar10_train = ds_cifar10_train.map(normalize_img, num_parallel_calls=tf.data.AUTOTUNE)
     ds_cifar10_train = ds_cifar10_train.cache()     # Cache data
     ds_cifar10_train = ds_cifar10_train.shuffle(ds_cifar10_info.splits['train'].num_examples)
-    ds_cifar10_train = ds_cifar10_train.batch(32)  # <<<<< To change batch size, you have to change it here
+    ds_cifar10_train = ds_cifar10_train.batch(256)  # <<<<< To change batch size, you have to change it here
     ds_cifar10_train = ds_cifar10_train.prefetch(tf.data.AUTOTUNE)
 
     # Prepare cifar10 test dataset
     ds_cifar10_test = ds_cifar10_test.map(normalize_img, num_parallel_calls=tf.data.AUTOTUNE)
-    ds_cifar10_test = ds_cifar10_test.batch(32)    # <<<<< To change batch size, you have to change it here
+    ds_cifar10_test = ds_cifar10_test.batch(256)    # <<<<< To change batch size, you have to change it here
     ds_cifar10_test = ds_cifar10_test.cache()
     ds_cifar10_test = ds_cifar10_test.prefetch(tf.data.AUTOTUNE)
 
     # Define the model here
     model = tf.keras.models.Sequential([
         keras.Input(shape=(32, 32, 3)),
+        layers.Conv2D(64, (5, 5), padding='same', activation='relu'),
+        layers.Conv2D(128, (3, 3), padding='same', activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(128, (3, 3), padding='same', activation='relu'),
+        layers.Conv2D(256, (3, 3), padding='same', activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(512, (3, 3), padding='same', activation='relu'),
+        layers.Conv2D(1024, (3, 3), padding='same', activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.Dropout(0.4),
         #####################################
         # Edit code here -- Update the model definition
         # You will need a dense last layer with 10 output channels to classify the 10 classes
         # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
         layers.Flatten(),
-        layers.Dense(128, activation='relu'),
+        layers.Dense(512, activation=layers.LeakyReLU(alpha=0.05), kernel_regularizer=regularizers.l2(0.006)),
+        layers.Dense(128, activation=layers.LeakyReLU(alpha=0.05), kernel_regularizer=regularizers.l2(0.006)),
         # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        tf.keras.layers.Dense(10)
+        tf.keras.layers.Dense(10, activation='softmax'),
     ])
 
     # Log the training hyper-parameters for WandB
@@ -98,8 +110,8 @@ if __name__ == '__main__':
         # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
         "learning_rate": 0.001,
         "optimizer": "adam",
-        "epochs": 5,
-        "batch_size": 32
+        "epochs": 28,
+        "batch_size": 256
         # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     }
 
@@ -111,7 +123,7 @@ if __name__ == '__main__':
 
     history = model.fit(
         ds_cifar10_train,
-        epochs=5,
+        epochs=28,
         validation_data=ds_cifar10_test,
         callbacks=[WandbMetricsLogger()]
     )

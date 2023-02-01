@@ -1,3 +1,4 @@
 tensorflow
 wandb
 matplotlib
+tensorflow_datasets
